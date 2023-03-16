@@ -1,0 +1,148 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// app.post('/posts/:id/like', async (req, res) => {
+//   try {
+//     const post = await Post.findById(req.params.id);
+//     post.likes += 1;
+//     const updatedPost = await post.save();
+//     res.json(updatedPost);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Internal server error' });
+//   }
+// });
+
+
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
+const app = express();
+app.use(bodyParser.json());
+
+// Connect to MongoDB
+mongoose.connect('mongodb://localhost/mydb', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+// Define the Blog model
+const Blog = mongoose.model('Blog', {
+  title: String,
+  content: String,
+  comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Comment' }]
+});
+
+// Define the Comment model
+const Comment = mongoose.model('Comment', {
+  name: String,
+  email: String,
+  content: String,
+  blog: { type: mongoose.Schema.Types.ObjectId, ref: 'Blog' }
+});
+
+// Create a new comment
+app.post('/api/comments', async (req, res) => {
+  const { name, email, content, blogId } = req.body;
+
+  const comment = new Comment({
+    name,
+    email,
+    content,
+    blog: blogId
+  });
+
+  try {
+    await comment.save();
+
+    // Add the comment to the blog's comments array
+    const blog = await Blog.findByIdAndUpdate(
+      blogId,
+      { $push: { comments: comment._id } },
+      { new: true }
+    ).populate('comments');
+
+    res.json(blog);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get all blogs
+app.get('/api/blogs', async (req, res) => {
+  try {
+    const blogs = await Blog.find().populate('comments');
+    res.json(blogs);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Start the server
+app.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
+
+
+// Define the schema for the "likes" collection/table
+const likeSchema = new mongoose.Schema({
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    blog: { type: mongoose.Schema.Types.ObjectId, ref: 'Blog' },
+  });
+  
+  // Define the model for the "likes" collection/table
+  const Like = mongoose.model('Like', likeSchema);
+  
+  // Route to handle liking a blog
+  app.post('/blogs/:blogId/likes', async (req, res) => {
+    const { userId } = req.body;
+    const { blogId } = req.params;
+  
+    // Check if there is already a like for this user and blog
+    const existingLike = await Like.findOne({ user: userId, blog: blogId });
+    if (existingLike) {
+      return res.status(400).json({ message: 'User has already liked this blog' });
+    }
+  
+    // Create a new like and save it to the "likes" collection/table
+    const like = new Like({ user: userId, blog: blogId });
+    await like.save();
+  
+    return res.status(200).json({ message: 'Blog liked successfully' });
+  });
+  
+
