@@ -1,6 +1,11 @@
-import { Blog } from '../models/index.js'
+import { Blog, User, Comment } from '../models/index.js'
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 
+//////////////// -FOR OBJECTID VALIDATION- ///////////////////////
+const isValidObjectId = function (objectId) {
+    return mongoose.Types.ObjectId.isValid(objectId)
+}
 
 //========================================POST /register==========================================================//
 
@@ -9,17 +14,10 @@ const create = async function (req, res) {
         let data = req.body
         let { title, content } = data
 
-        let token = req.header('Authorization');
-        let splitToken = token.split(" ")
-        let decodedtoken = jwt.verify(splitToken[1], "SECRET_KEY")
+        const verifiedtoken = req.verifiedtoken
+        let idFromToken = verifiedtoken.aud
 
-        let userIdFromToken = decodedtoken.aud
-
-        const blogCreated = await Blog.create({
-            title: title,
-            content: content,
-            userId: userIdFromToken
-        })
+        const blogCreated = await Blog.create({ title: title, content: content, userId: idFromToken })
 
         res.status(201).send({ status: 1009, message: "Your Blog has been created successfully", data: blogCreated })
 
@@ -37,16 +35,7 @@ const update = async function (req, res) {
         let data = req.body
         let { title, content } = data
 
-        const updateBlog = await Blog.findOneAndUpdate({ _id: blogId, isDeleted: false }, {
-            $set: {
-                title: title,
-                content: content,
-            }
-        }, { new: true });
-
-        if (!updateBlog) {
-            return res.status(404).send({ status: 1006, message: "No Data Match" });
-        }
+        const updateBlog = await Blog.findOneAndUpdate({ _id: blogId, isDeleted: false }, { $set: { title: title, content: content } }, { new: true });
 
         return res.status(200).send({ status: 1010, message: 'Your Blog has been updated Successfully', data: updateBlog })
 
@@ -63,13 +52,48 @@ const update = async function (req, res) {
 const index = async function (req, res) {
     try {
 
-        let blogData = await Blog.find({ $and: [{ isDeleted: false }] })
+        // let findComments = await Comment.find({ $elemMatch: { isDeleted: false } })
+        // console.log(findComments.content)
+
+        let blogData = await Blog.find({ $and: [{ isDeleted: false }] }).select({ comments: findComments.content, title: 1, content: 1 })
 
         if (!blogData) {
             return res.status(422).send({ status: 1006, message: "No Blogs Found....." });
         }
 
         return res.status(200).send({ status: 1010, message: 'All Blogs:', data: blogData })
+    }
+    catch (err) {
+        // console.log(err.message)
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================POST/getAllBlogs==========================================================//
+
+const get = async function (req, res) {
+    try {
+
+        let blogId = req.params.blogId
+
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
+        }
+
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
+        }
+
+        const blogData = await Comment.find({ blog: blogId }, { isDeleted: false }).populate({
+            path: 'blog',
+            select: 'title',
+        })
+
+        if (!blogData) {
+            return res.status(422).send({ status: 1006, message: "No Blogs Found....." });
+        }
+        return res.status(200).send({ status: 1010, message: 'All Blogs:', data: blogData })
+
     }
     catch (err) {
         console.log(err.message)
@@ -99,32 +123,6 @@ const destroy = async function (req, res) {
     }
 };
 
-//========================================POST//Createlike==========================================================//
-
-const like = async function (req, res) {
-    try {
-        const blogId = req.params.blogId
-
-        const findblog = await Blog.findById(blogId);
-        findblog.likes += 1;
-
-        const saveLike = await findblog.save()
-
-        const updateLike = await Blog.findByIdAndUpdate({ _id: blogId, isDeleted: false },
-            {
-                $set: {
-                    like: saveLike,
-                }
-            },
-            { new: true })
-
-        return res.status(200).send({ status: 1010, message: 'You have liked the blog Successfully', data: updateLike })
-
-    } catch (error) {
-        console.log(error.message)
-        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
-    }
-}
 
 
-export { create, update, index, destroy, like }
+export { create, update, index, get, destroy }

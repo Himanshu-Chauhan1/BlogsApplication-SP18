@@ -1,18 +1,10 @@
 import mongoose from "mongoose";
-import { User } from '../models/index.js'
-import jwt from 'jsonwebtoken'
+import { User, Blog } from '../models/index.js'
 
 
 ////////////////////////// -GLOBAL- //////////////////////
 const isValid = function (value) {
     if (!value || typeof value != "string" || value.trim().length == 0)
-        return false;
-    return true;
-};
-
-////////////////////////// -GLOBAL- //////////////////////
-const isValidNumber = function (value) {
-    if (!value || typeof value != "number")
         return false;
     return true;
 };
@@ -39,7 +31,7 @@ const isValidEmail = (email) => {
 
 //========================================CreateUser==========================================================//
 
-const createUser = async function (req, res, next) {
+const createAdmin = async function (req, res, next) {
     try {
         const data = req.body
 
@@ -92,7 +84,7 @@ const createUser = async function (req, res, next) {
             return res.status(422).send({ status: 1003, message: "Password cannot be more than 15 characters" })
         }
 
-        data.userRole = "user".toLowerCase()
+        data.userRole = "admin".toLowerCase()
 
         next()
 
@@ -103,7 +95,7 @@ const createUser = async function (req, res, next) {
 
 //========================================LoginUser==========================================================//
 
-let userLogin = async (req, res, next) => {
+let adminLogin = async (req, res, next) => {
     try {
         const data = req.body;
         let { email, password } = data
@@ -134,7 +126,7 @@ let userLogin = async (req, res, next) => {
 
 //========================================Updateuser==========================================================//
 
-const updateUser = async function (req, res, next) {
+const updateAdmin = async function (req, res, next) {
     try {
 
         let userId = req.params.id
@@ -150,8 +142,12 @@ const updateUser = async function (req, res, next) {
         const verifiedtoken = req.verifiedtoken
         let idFromToken = verifiedtoken.aud
 
-        if (idFromToken !== userId) {
-            return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
+        let checkAdmin = await User.findOne({ $and: [{ _id: userId }, { isDeleted: false }, { userRole: "user" }] })
+
+        if (!checkAdmin) {
+            if (idFromToken !== userId) {
+                return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
+            }
         }
 
         let checkUser = await User.findOne({ $and: [{ _id: userId }, { isDeleted: false }] })
@@ -253,7 +249,27 @@ const updateUser = async function (req, res, next) {
 
 //========================================DeleteUser==========================================================//
 
-const deleteTheUser = async function (req, res, next) {
+const getAllUser = async function (req, res, next) {
+    try {
+
+        const verifiedtoken = req.verifiedtoken
+        const roleFromToken = verifiedtoken.userRole
+
+        if (!(roleFromToken == 'admin')) {
+            return res.status(422).send({ status: 1003, message: "Only admin can get all the users....." })
+        }
+
+        next()
+    }
+    catch (err) {
+
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================DeleteUser==========================================================//
+
+const deleteAdmin = async function (req, res, next) {
     try {
 
         let userId = req.params.id
@@ -269,7 +285,105 @@ const deleteTheUser = async function (req, res, next) {
         const verifiedtoken = req.verifiedtoken
         let idFromToken = verifiedtoken.aud
 
-        if (idFromToken !== userId) {
+        let checkAdmin = await User.findOne({ $and: [{ _id: userId }, { isDeleted: false }, { userRole: "user" }] })
+
+        if (!checkAdmin) {
+            if (idFromToken !== userId) {
+                return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
+            }
+        }
+
+        next()
+    }
+    catch (err) {
+
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================UpdateBlog==========================================================//
+
+const updateABlog = async function (req, res, next) {
+    try {
+
+        let blogId = req.params.blogId
+
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
+        }
+
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
+        }
+
+        const verifiedtoken = req.verifiedtoken
+        let roleFromToken = verifiedtoken.userRole
+
+        if (roleFromToken !== "admin") {
+            return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
+        }
+
+        let checkBlog = await Blog.findOne({ $and: [{ _id: blogId }, { isDeleted: false }] })
+
+        if (!checkBlog) {
+            return res.status(422).send({ status: 1011, message: "This Blog does not exists or already deleted" })
+        }
+
+        const data = req.body
+
+        const { title, content } = data
+
+        const dataObject = {};
+
+        if (!Object.keys(data).length && typeof files === 'undefined') {
+            return res.status(422).send({ status: 1002, msg: " Please provide some data to update" })
+        }
+
+        if ("title" in data) {
+
+            if (!isValid(title)) {
+                return res.status(422).send({ status: 1002, message: "title is required" })
+            }
+
+            dataObject['title'] = title
+        }
+
+        if ("content" in data) {
+
+            if (!isValid(content)) {
+                return res.status(422).send({ status: 1002, message: "content is required" })
+            }
+
+            dataObject['content'] = content
+        }
+
+        next()
+    }
+    catch (err) {
+        console.log(err.message)
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================Deleteblog==========================================================//
+
+const deleteABlog = async function (req, res, next) {
+    try {
+
+        let blogId = req.params.blogId
+
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
+        }
+
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
+        }
+
+        const verifiedtoken = req.verifiedtoken
+        let roleFromToken = verifiedtoken.userRole
+
+        if (roleFromToken !== "admin") {
             return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
         }
 
@@ -282,5 +396,5 @@ const deleteTheUser = async function (req, res, next) {
 };
 
 
-export { createUser, userLogin, updateUser, deleteTheUser }
+export { createAdmin, adminLogin, updateAdmin, getAllUser, deleteAdmin, updateABlog, deleteABlog }
 

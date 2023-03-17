@@ -16,7 +16,7 @@ const userSchema = new mongoose.Schema(
         },
         userRole: {
             type: String,
-            default: "user"
+            enum: ["user", "admin"]
         },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date }

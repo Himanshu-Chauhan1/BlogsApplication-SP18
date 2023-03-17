@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Comment, Blog } from '../models/index.js'
+import { Comment, Blog, User } from '../models/index.js'
 import jwt from 'jsonwebtoken'
 
 ////////////////////////// -GLOBAL- //////////////////////
@@ -19,17 +19,11 @@ const isValidObjectId = function (objectId) {
     return mongoose.Types.ObjectId.isValid(objectId)
 }
 
-////////////////////////// -GLOBAL- //////////////////////
-const isValidNumber = function (value) {
-    if (!value || typeof value != "number")
-        return false;
-    return true;
-};
-
 //========================================CreateBlog==========================================================//
 
 const createComment = async function (req, res, next) {
     try {
+
         const data = req.body
         let blogId = req.params.blogId
 
@@ -98,12 +92,21 @@ const updateComment = async function (req, res, next) {
         let checkBlogComment = await Comment.findOne({ $and: [{ _id: commentId }, { blog: blogId }, { isDeleted: false }] })
 
         if (!checkBlogComment) {
-            return res.status(422).send({ status: 1011, message: "This comment for this blog is does not exists or already deleted" })
+            return res.status(422).send({ status: 1011, message: "This comment for this blog does not exists or already deleted" })
+        }
+
+        const verifiedtoken = req.verifiedtoken
+        let emailFromToken = verifiedtoken.userEmail
+
+        let checkCommentUser = await Comment.findOne({ $and: [{ _id: commentId }, { email: emailFromToken }, { isDeleted: false }] })
+
+        if (!checkCommentUser) {
+            return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
         }
 
         const data = req.body
 
-        const { title, content } = data
+        const { content } = data
 
         const dataObject = {};
 
@@ -120,6 +123,28 @@ const updateComment = async function (req, res, next) {
             dataObject['content'] = content
         }
 
+        next()
+    }
+    catch (err) {
+
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================GetCommentsOnABlog==========================================================//
+
+const getAllCommentsByBlogId = async function (req, res, next) {
+    try {
+
+        let blogId = req.params.blogId
+
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
+        }
+
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
+        }
 
         next()
     }
@@ -145,12 +170,33 @@ const deleteComment = async function (req, res, next) {
             return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
         }
 
+        let checkBlog = await Blog.findOne({ $and: [{ _id: blogId }, { isDeleted: false }] })
+
+        if (!checkBlog) {
+            return res.status(422).send({ status: 1011, message: "This Blog is does not exists or already deleted" })
+        }
+
         if (!commentId) {
             return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
         }
 
         if (!isValidObjectId(commentId)) {
             return res.status(422).send({ status: 1003, message: "Invalid comment-Id" })
+        }
+
+        let checkBlogComment = await Comment.findOne({ $and: [{ _id: commentId }, { blogId: blogId }, { isDeleted: false }] })
+
+        if (!checkBlogComment) {
+            return res.status(422).send({ status: 1011, message: "Comment for this blog is Already Deleted" })
+        }
+
+        const verifiedtoken = req.verifiedtoken
+        let emailFromToken = verifiedtoken.userEmail
+
+        let checkCommentUser = await Comment.findOne({ $and: [{ _id: commentId }, { email: emailFromToken }, { isDeleted: false }] })
+
+        if (!checkCommentUser) {
+            return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
         }
 
         next()
@@ -162,5 +208,5 @@ const deleteComment = async function (req, res, next) {
 };
 
 
-export { createComment, updateComment, deleteComment }
+export { createComment, updateComment, getAllCommentsByBlogId, deleteComment }
 

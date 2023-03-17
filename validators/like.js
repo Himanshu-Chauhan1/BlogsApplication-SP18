@@ -1,5 +1,7 @@
+import { Like, User, Blog } from "../models/index.js"
 import mongoose from "mongoose";
-import { Blog, User } from '../models/index.js'
+import jwt from 'jsonwebtoken';
+
 
 ////////////////////////// -GLOBAL- //////////////////////
 const isValid = function (value) {
@@ -25,32 +27,34 @@ const isValidNumber = function (value) {
     return true;
 };
 
-//========================================CreateBlog==========================================================//
 
-const createBlog = async function (req, res, next) {
+//========================================Createlike==========================================================//
+
+const createLike = async function (req, res, next) {
     try {
 
-        const data = req.body
+        const blogId = req.params.blogId
+        let data = req.body
+        let { like } = data
 
-        const { title, content } = req.body
-
-        if (!isValidRequestBody(data)) {
-            return res.status(422).send({ status: 1002, message: "Please Provide Details" })
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
         }
 
-        if (!isValid(title)) {
-            return res.status(422).send({ status: 1002, message: "title is required" })
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
         }
 
-        const isRegisteredTitle = await Blog.findOne({ title: title })
+        let checkBlog = await Blog.findOne({ $and: [{ _id: blogId }, { isDeleted: false }] })
 
-        if (isRegisteredTitle) {
-            return res.status(422).send({ status: 1003, message: "This title is already registered with a blog, please enter a new one" })
+        if (!checkBlog) {
+            return res.status(422).send({ status: 1011, message: "This Blog does not exists or already deleted" })
         }
 
-        if (!isValid(content)) {
-            return res.status(422).send({ status: 1002, message: "content is required" })
+        if (!isValid(like)) {
+            return res.status(422).send({ status: 1002, message: "like is required" })
         }
+
 
         next()
 
@@ -60,9 +64,9 @@ const createBlog = async function (req, res, next) {
     }
 }
 
-//========================================UpdateBlog==========================================================//
+//========================================Updatelike==========================================================//
 
-const updateBlog = async function (req, res, next) {
+const updateLike = async function (req, res, next) {
     try {
 
         let blogId = req.params.blogId
@@ -135,22 +139,10 @@ const updateBlog = async function (req, res, next) {
     }
 };
 
-//========================================GetAllBlogs==========================================================//
 
-const getAllBlogs = async function (req, res, next) {
-    try {
+//========================================POST/getlikes==========================================================//
 
-        next()
-    }
-    catch (err) {
-
-        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
-    }
-};
-
-//========================================Deleteblog==========================================================//
-
-const deleteBlog = async function (req, res, next) {
+const getAllLikes = async function (req, res, next) {
     try {
 
         let blogId = req.params.blogId
@@ -163,23 +155,19 @@ const deleteBlog = async function (req, res, next) {
             return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
         }
 
-        const verifiedtoken = req.verifiedtoken
-        let idFromToken = verifiedtoken.aud
+        let checkBlog = await Blog.findOne({ $and: [{ _id: blogId }, { isDeleted: false }] })
 
-        let checkBlogUser = await Blog.findOne({ $and: [{ _id: blogId }, { userId: idFromToken }, { isDeleted: false }] })
-
-        if (!checkBlogUser) {
-            return res.status(401).send({ Status: 1010, message: "Unauthorized Access! You dont have correct privilege to perform this operation" });
+        if (!checkBlog) {
+            return res.status(422).send({ status: 1011, message: "This Blog does not exists or already deleted" })
         }
 
         next()
+
     }
     catch (err) {
-
+        console.log(err.message)
         return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
     }
 };
 
-
-export { createBlog, updateBlog, getAllBlogs, deleteBlog }
-
+export { createLike, updateLike, getAllLikes }

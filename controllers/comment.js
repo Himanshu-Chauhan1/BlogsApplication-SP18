@@ -7,13 +7,10 @@ import jwt from 'jsonwebtoken';
 const create = async function (req, res) {
     try {
         let blogId = req.params.blogId
-        let token = req.header('Authorization');
-        let splitToken = token.split(" ")
-        let decodedtoken = jwt.verify(splitToken[1], "SECRET_KEY")
+        const verifiedtoken = req.verifiedtoken
+        let idFromToken = verifiedtoken.aud
 
-        let userIdFromToken = decodedtoken.aud
-
-        const findUser = await User.findById(userIdFromToken);
+        const findUser = await User.findById(idFromToken);
 
         const commentCreated = await Comment.create({
             name: findUser.name,
@@ -21,19 +18,6 @@ const create = async function (req, res) {
             content: req.body.content,
             blog: blogId
         })
-
-        const blog = await Blog.findByIdAndUpdate(
-            blogId,
-            {
-                $push: {
-                    comments: commentCreated
-
-                }
-            },
-            { new: true }
-        ).populate('comments');
-
-        console.log(blog)
 
         res.status(201).send({ status: 1009, message: "Your Comment has been registered successfully", data: commentCreated })
 
@@ -53,19 +37,30 @@ const update = async function (req, res) {
         let data = req.body
         let { content } = data
 
-        const updateBlogComment = await Comment.findOneAndUpdate({ _id: commentId, isDeleted: false }, {
-            $set: {
-                content: content,
-            }
-        }, { new: true });
-
-        console.log(updateBlogComment)
-
-        if (!updateBlogComment) {
-            return res.status(404).send({ status: 1006, message: "No Data Match" });
-        }
+        const updateBlogComment = await Comment.findOneAndUpdate({ _id: commentId, isDeleted: false }, { $set: { content: content } }, { new: true });
 
         return res.status(200).send({ status: 1010, message: 'Your comment for the selected Blog has been updated Successfully', data: updateBlogComment })
+    }
+    catch (err) {
+        console.log(err.message)
+        return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
+    }
+};
+
+//========================================GetComments==========================================================//
+
+const get = async function (req, res) {
+    try {
+
+        let blogId = req.params.blogId
+
+        let findAllComment = await Comment.find({blog:blogId},{ isDeleted: false }).select({ name: 1, email: 1, content: 1, blog: 1 })
+
+        if (findAllComment.length === 0) {
+            return res.status(401).send({ Status: 1010, message: "No comments found on this blog...." });
+        }
+
+        return res.status(200).send({ status: 1010, message: 'All comments on the blog:', comments: findAllComment.length, data: findAllComment })
     }
     catch (err) {
         console.log(err.message)
@@ -81,18 +76,6 @@ const destroy = async function (req, res) {
         let blogId = req.params.blogId
         let commentId = req.params.commentId
 
-        let checkBlog = await Blog.findOne({ $and: [{ blog: blogId }, { isDeleted: false }] })
-
-        if (!checkBlog) {
-            return res.status(422).send({ status: 1011, message: "This Blog is Deleted, comments are also deleted" })
-        }
-
-        let checkBlogComment = await Comment.findOne({ $and: [{ _id: commentId }, { isDeleted: false }] })
-
-        if (!checkBlogComment) {
-            return res.status(422).send({ status: 1011, message: "Comment for this blog is Already Deleted" })
-        }
-
         let updateBlogComment = await Comment.findOneAndUpdate({ _id: commentId }, { isDeleted: true, deletedAt: Date.now() }, { new: true })
 
         return res.status(200).send({ status: 1010, message: 'Your comment for the selected Blog has been deleted Successfully', data: updateBlogComment })
@@ -105,4 +88,4 @@ const destroy = async function (req, res) {
 };
 
 
-export { create, update, destroy }
+export { create, update, get, destroy }
