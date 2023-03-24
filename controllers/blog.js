@@ -90,7 +90,7 @@ const get = async function (req, res) {
             .select({ createdAt: 0, updatedAt: 0, isDeleted: 0, role: 0, __v: 0 })
 
         if (blogData.length === 0) {
-            return res.status(422).send({ status: 1006, message: "No Blogs Found....." });
+            return res.status(422).send({ status: 1006, message: "No Blog Found....." });
         }
         return res.status(200).send({ status: 1010, message: 'The entered blog details:', data: blogData })
 
