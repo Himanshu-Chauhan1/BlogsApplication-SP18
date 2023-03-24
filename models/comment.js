@@ -6,14 +6,6 @@ const commentSchema = new mongoose.Schema(
         email: { type: String },
         content: { type: String },
         createdAt: { type: Date, default: Date.now },
-        blog: {
-            type: mongoose.Schema.Types.Object,
-            ref: 'blog'
-        },
-        like: {
-            type: mongoose.Schema.Types.Object,
-            ref: 'lik'
-        },
         isDeleted: { type: Boolean, default: false },
         deletedAt: { type: Date }
     },

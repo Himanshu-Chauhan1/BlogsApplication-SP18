@@ -1,11 +1,4 @@
-import { Blog, User, Comment } from '../models/index.js'
-import jwt from 'jsonwebtoken';
-import mongoose from 'mongoose';
-
-//////////////// -FOR OBJECTID VALIDATION- ///////////////////////
-const isValidObjectId = function (objectId) {
-    return mongoose.Types.ObjectId.isValid(objectId)
-}
+import { Blog, User, Comment, Like } from '../models/index.js'
 
 //========================================POST /register==========================================================//
 
@@ -17,7 +10,7 @@ const create = async function (req, res) {
         const verifiedtoken = req.verifiedtoken
         let idFromToken = verifiedtoken.aud
 
-        const blogCreated = await Blog.create({ title: title, content: content, userId: idFromToken })
+        const blogCreated = await Blog.create({ title: title, content: content, user: idFromToken })
 
         res.status(201).send({ status: 1009, message: "Your Blog has been created successfully", data: blogCreated })
 
@@ -46,16 +39,13 @@ const update = async function (req, res) {
     }
 };
 
-
 //========================================POST/getAllBlogs==========================================================//
 
 const index = async function (req, res) {
     try {
 
-        // let findComments = await Comment.find({ $elemMatch: { isDeleted: false } })
-        // console.log(findComments.content)
+        let blogData = await Blog.find({ $and: [{ isDeleted: false }] }).select({ title: 1, content: 1 })
 
-        let blogData = await Blog.find({ $and: [{ isDeleted: false }] }).select({ comments: findComments.content, title: 1, content: 1 })
 
         if (!blogData) {
             return res.status(422).send({ status: 1006, message: "No Blogs Found....." });
@@ -64,7 +54,7 @@ const index = async function (req, res) {
         return res.status(200).send({ status: 1010, message: 'All Blogs:', data: blogData })
     }
     catch (err) {
-        // console.log(err.message)
+        console.log(err.message)
         return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
     }
 };
@@ -76,23 +66,33 @@ const get = async function (req, res) {
 
         let blogId = req.params.blogId
 
-        if (!blogId) {
-            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
-        }
+        // const blogData = await Blog.aggregate([
+        //     {
+        //         $lookup: {
+        //             from: "comments",
+        //             localField: "comments",
+        //             foreignField: "Comment",
+        //             as: "comments",
+        //         },
+        //     },
+        //     {
+        //         $lookup: {
+        //             from: "likes",
+        //             localField: "likes",
+        //             foreignField: "Like",
+        //             as: "likes"
+        //         }
+        //     }
+        // ])
 
-        if (!isValidObjectId(blogId)) {
-            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
-        }
+        const blogData = await Blog.find({ _id: blogId })
+            .populate("comments likes", { name: 1, email: 1, content: 1, like: 1, userId: 1, blogId: 1 })
+            .select({ createdAt: 0, updatedAt: 0, isDeleted: 0, role: 0, __v: 0 })
 
-        const blogData = await Comment.find({ blog: blogId }, { isDeleted: false }).populate({
-            path: 'blog',
-            select: 'title',
-        })
-
-        if (!blogData) {
+        if (blogData.length === 0) {
             return res.status(422).send({ status: 1006, message: "No Blogs Found....." });
         }
-        return res.status(200).send({ status: 1010, message: 'All Blogs:', data: blogData })
+        return res.status(200).send({ status: 1010, message: 'The entered blog details:', data: blogData })
 
     }
     catch (err) {

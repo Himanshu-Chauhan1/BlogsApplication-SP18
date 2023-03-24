@@ -51,9 +51,11 @@ const createLike = async function (req, res, next) {
             return res.status(422).send({ status: 1011, message: "This Blog does not exists or already deleted" })
         }
 
-        if (!isValid(like)) {
-            return res.status(422).send({ status: 1002, message: "like is required" })
-        }
+        // if (!isValid(like)) {
+        //     return res.status(422).send({ status: 1002, message: "like is required" })
+        // }
+
+        data.like="true"
 
 
         next()

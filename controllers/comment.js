@@ -16,8 +16,9 @@ const create = async function (req, res) {
             name: findUser.name,
             email: findUser.email,
             content: req.body.content,
-            blog: blogId
         })
+
+        const updateBlogs = await Blog.findOneAndUpdate({ _id: blogId }, { $push: { comments: commentCreated._id } });
 
         res.status(201).send({ status: 1009, message: "Your Comment has been registered successfully", data: commentCreated })
 
@@ -54,7 +55,7 @@ const get = async function (req, res) {
 
         let blogId = req.params.blogId
 
-        let findAllComment = await Comment.find({blog:blogId},{ isDeleted: false }).select({ name: 1, email: 1, content: 1, blog: 1 })
+        let findAllComment = await Comment.find({ blog: blogId }, { isDeleted: false }).select({ name: 1, email: 1, content: 1, blog: 1 })
 
         if (findAllComment.length === 0) {
             return res.status(401).send({ Status: 1010, message: "No comments found on this blog...." });

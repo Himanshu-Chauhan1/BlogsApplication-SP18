@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import { User } from '../models/index.js'
-import jwt from 'jsonwebtoken'
 
 
 ////////////////////////// -GLOBAL- //////////////////////

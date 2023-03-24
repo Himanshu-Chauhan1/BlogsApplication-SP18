@@ -140,10 +140,25 @@ const updateBlog = async function (req, res, next) {
 const getAllBlogs = async function (req, res, next) {
     try {
 
+        let blogId = req.params.blogId
+
+        if (!blogId) {
+            return res.status(422).send({ status: 1002, message: "Please enter blog-Id" })
+        }
+
+        if (!isValidObjectId(blogId)) {
+            return res.status(422).send({ status: 1003, message: "Invalid blog-Id" })
+        }
+
+        let checkBlog = await Blog.findOne({ $and: [{ _id: blogId }, { isDeleted: false }] })
+
+        if (!checkBlog) {
+            return res.status(422).send({ status: 1011, message: "This Blog does not exists or already deleted" })
+        }
+
         next()
     }
     catch (err) {
-
         return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
     }
 };

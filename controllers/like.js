@@ -20,6 +20,8 @@ const create = async function (req, res) {
 
         const likeCreated = await Like.create({ blogId: blogId, userId: idFromToken, like: like })
 
+        const updateBlogs = await Blog.findOneAndUpdate({ _id: blogId }, { $push: { likes: likeCreated } });
+
         return res.status(200).send({ status: 1010, message: 'You have liked the blog Successfully', data: likeCreated })
 
     } catch (err) {

@@ -76,7 +76,7 @@ const logout = async (req, res) => {
 
 const update = async function (req, res) {
     try {
-        
+
         let userId = req.params.id
         let data = req.body
         let { name, email, phone, password } = data

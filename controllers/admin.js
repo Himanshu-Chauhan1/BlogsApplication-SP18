@@ -117,7 +117,7 @@ const destroy = async function (req, res) {
     try {
 
         let userId = req.params.userid
-        
+
 
         let checkUser = await User.findOne({ $and: [{ _id: userId }, { isDeleted: false }] })
 
@@ -134,7 +134,6 @@ const destroy = async function (req, res) {
         return res.status(422).send({ status: 1001, msg: "Something went wrong Please check back again" })
     }
 };
-
 
 //========================================POST/updateblog==========================================================//
 
